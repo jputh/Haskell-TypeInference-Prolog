@@ -8,29 +8,69 @@
     delegeGVars() predicate to clean up gvar().
 */
 
+
+
 % tests for typeExp
-test(typeExp_iplus) :- 
-    typeExp(iplus(int,int), int).
 
-% this test should fail
-test(typeExp_iplus_F, [fail]) :-
-    typeExp(iplus(int, int), float).
+%ADDITION
+test(typeExp_plus) :- 
+    typeExp(+(int,int), int).
 
-test(typeExp_iplus_T, [true(T == int)]) :-
-    typeExp(iplus(int, int), T).
+test(typeExp_plus_F, [fail]) :- % this test should fail
+    typeExp(+(float, float), int).
+
+test(typeExp_plus_T, [true(T == int)]) :-
+    typeExp(+(int, int), T).
+
+%SUBTRACTION
+test(typeExp_minus) :- 
+    typeExp(-(int,int), int).
+
+test(typeExp_minus_F, [fail]) :- % this test should fail
+    typeExp(-(float, float), int).
+
+test(typeExp_minus_T, [true(T == int)]) :-
+    typeExp(-(int, int), T).
+
+%Multiplication
+test(typeExp_mult) :- 
+    typeExp(*(int,int), int).
+
+test(typeExp_mult_F, [fail]) :- % this test should fail
+    typeExp(*(float, float), int).
+
+test(typeExp_mult_T, [true(T == int)]) :-
+    typeExp(*(int, int), T).
+
+%Division
+test(typeExp_dic) :- 
+    typeExp(/(int,int), int).
+
+test(typeExp_mult_F, [fail]) :- % this test should fail
+    typeExp(/(float, float), int).
+
+test(typeExp_mult_T, [true(T == int)]) :-
+    typeExp(/(int, int), T).
+
+
 
 % NOTE: use nondet as option to test if the test is nondeterministic
 
 % test for statement with state cleaning
 test(typeStatement_gvar, [nondet, true(T == int)]) :- % should succeed with T=int
     deleteGVars(), /* clean up variables */
-    typeStatement(gvLet(v, T, iplus(X, Y)), unit),
+    typeStatement(gvLet(v, T, +(X, Y)), unit),
     assertion(X == int), assertion( Y == int), % make sure the types are int
     gvar(v, int). % make sure the global variable is defined
 
 % same test as above but with infer 
 test(infer_gvar, [nondet]) :-
-    infer([gvLet(v, T, iplus(X, Y))], unit),
+    infer([gvLet(v, T, +(X, Y))], unit),
+    assertion(T==int), assertion(X==int), assertion(Y=int),
+    gvar(v,int).
+
+test(infer_complexIf, [nondet]) :-
+    infer([gvLet(v, T, +(X, Y)), if(v < 3, [3], [4])], unit),
     assertion(T==int), assertion(X==int), assertion(Y=int),
     gvar(v,int).
 
@@ -42,7 +82,7 @@ test(mockedFct, [nondet]) :-
     assertion(X==int), assertion(T==float). % make sure the types infered are correct
 
 test(simple_if, [nondet]) :-
-    typeStatement( if(true, [3], [4]), T),
+    typeStatement( if(3 > 4, [3], [4]), T),
     assertion(T==int).
 
 

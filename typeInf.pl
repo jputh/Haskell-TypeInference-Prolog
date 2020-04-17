@@ -9,6 +9,8 @@ typeExp(X, float) :-
 typeExp(X, bool) :-
     typeBoolExp(X).
 
+
+
 /* match functions by unifying with arguments 
     and infering the result
 */
@@ -21,6 +23,11 @@ typeExp(Fct, T):-
     append(Args, [T], FType), /* make it loook like a function signature */
     functionType(Fname, TArgs), /* get type of arguments from definition */
     typeExpList(FType, TArgs). /* recurisvely match types */
+
+typeExp(Var, T) :-
+        atom(Var),
+        gvar(Var, T),
+        bType(T).
 
 
 /* propagate types */
@@ -36,8 +43,8 @@ hasComparison(int).
 hasComparison(float).
 hasComparison(string).
 
-hasAdd(int).
-hasAdd(float).
+numericType(int).
+numericType(float).
 
 /* predicate to infer types for boolean expressions */
 typeBoolExp(true).
@@ -46,12 +53,23 @@ typeBoolExp( X < Y) :-
     typeExp(X, T),
     typeExp(Y, T),
     hasComparison(T).
+typeBoolExp( X > Y) :- 
+    typeExp(X, T),
+    typeExp(Y, T),
+    hasComparison(T).
+typeBoolExp(X =< Y) :- 
+    typeExp(X, T),
+    typeExp(Y, T),
+    hasComparison(T).
+typeBoolExp( X >= Y) :- 
+    typeExp(X, T),
+    typeExp(Y, T),
+    hasComparison(T).
 
 
 /* TODO: add statements types and their type checking */
 
-typeStatement(X, T) :-
-    typeExp(X, T).
+
 
 /* global variable definition
     Example:
@@ -70,6 +88,10 @@ typeStatement(if(Cond, TrueB, FalseB), T) :-
     typeBoolExp(Cond),
     typeCode(TrueB, T),
     typeCode(FalseB, T).
+
+
+typeStatement(X, T) :-
+    typeExp(X, T).
 
 /* Code is simply a list of statements. The type is 
     the type of the last statement 
@@ -132,9 +154,10 @@ iplus :: int -> int -> int
 
 */
 
-fType(iplus, [int,int,int]).
-fType((+), [T, T, T]) :- hasAdd(T).
-fType(fplus, [float, float, float]).
+fType((+), [T, T, T]) :- numericType(T).
+fType((-), [T, T, T]) :- numericType(T).
+fType((*), [T, T, T]) :- numericType(T).
+fType((/), [T, T, T]) :- numericType(T).
 fType(fToInt, [float,int]).
 fType(iToFloat, [int,float]).
 fType(print, [_X, unit]). /* simple print */
@@ -151,7 +174,7 @@ functionType(Name, Args):-
 
 % Check first built in functions
 functionType(Name, Args) :-
-    fType(Name, Args), !. % make deterministic
+    fType(Name, Args). % make deterministic
 
 % This gets wiped out but we have it here to make the linter happy
 gvar(_, _) :- false().
