@@ -1,4 +1,4 @@
-:- dynamic gvar/2.
+:- dynamic gvar/2, local/1, lvar/2.
 
 typeExp(X, int) :-
     integer(X).
@@ -24,10 +24,12 @@ typeExp(Fct, T):-
     functionType(Fname, TArgs), /* get type of arguments from definition */
     typeExpList(FType, TArgs). /* recurisvely match types */
 
+
+% assert type of global variable in code
 typeExp(Var, T) :-
-        atom(Var),
-        gvar(Var, T),
-        bType(T).
+    atom(Var),
+    (gvar(Var, T) ; lvar(Var, T)),
+    bType(T).
 
 
 /* propagate types */
@@ -38,6 +40,8 @@ typeExpList([], []).
 typeExpList([Hin|Tin], [Hout|Tout]):-
     typeExp(Hin, Hout), /* type infer the head */
     typeExpList(Tin, Tout). /* recurse */
+
+
 
 hasComparison(int).
 hasComparison(float).
@@ -79,7 +83,7 @@ typeStatement(gvLet(Name, T, Code), unit):-
     atom(Name), /* make sure we have a bound name */
     typeExp(Code, T), /* infer the type of Code and ensure it is T */
     bType(T), /* make sure we have an infered type */
-    asserta(gvar(Name, T)). /* add definition to database */
+    (local(on) -> asserta(lvar(Name, T)) ; asserta(gvar(Name, T))). /* add definition to database */
 
 /* if statements are encodes as:
     if(condition:Boolean, trueCode: [Statements], falseCode: [Statements])
@@ -88,6 +92,39 @@ typeStatement(if(Cond, TrueB, FalseB), T) :-
     typeBoolExp(Cond),
     typeCode(TrueB, T),
     typeCode(FalseB, T).
+
+/* global function should have a name, a list of variables (Vars) with the 
+last one being the return type, a list of statements that make up the function (Code).
+We should assert the type of the last variable in Vars is the same as the the type of the
+last statement in Code 
+*/
+% GLOBAL FUNCTION
+typeStatement(gFunction(Name, Vars, Code), T) :-
+    atom(Name),
+    typeCode(Code, T),
+    typeCode(Vars, T),
+    bType(T),
+    (local(on) -> asserta(lvar(Name, Vars)) ; asserta(gvar(Name, Vars))).
+
+% FUNCTION CALL
+typeStatement(funcCall(Name, Params), T) :-
+    atom(Name),
+    append(Params, [T], FType),
+    functionType(Name, Args),
+    typeExpList(Args, FType),
+    typeCode(Args, T).
+
+% LET IN
+typeStatement(letIn(Stmts, Stmt), T) :-
+    deleteLVars(),
+    asserta(local(on)),
+    typeCode(Stmts, _),
+    resetLocal(),
+    typeStatement(Stmt, T),
+    deleteLVars().
+
+
+
 
 
 typeStatement(X, T) :-
@@ -139,7 +176,9 @@ bType([H|T]):- bType(H), bType(T).
     variables. Best wy to do this is in your top predicate
 */
 
-deleteGVars():-retractall(gvar), asserta(gvar(_X,_Y):-false()).
+deleteGVars():-retractall(gvar(_, _)), asserta(gvar(_X,_Y):-false()).
+deleteLVars():-retractall(lvar(_, _)), asserta(lvar(_X,_Y):-false()).
+resetLocal():-retractall(local(_)), asserta(local(off)).
 
 /*  builtin functions
     Each definition specifies the name and the 
@@ -178,3 +217,4 @@ functionType(Name, Args) :-
 
 % This gets wiped out but we have it here to make the linter happy
 gvar(_, _) :- false().
+lvar(_, _) :- false().
