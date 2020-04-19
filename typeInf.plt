@@ -68,13 +68,13 @@ test(typeExp_mult_T, [nondet, true(T == int)]) :-
 %GLOBAL VARIABLE DECLARATION
 test(typeStatement_gvar, [nondet, true(T == int)]) :- % should succeed with T=int
     deleteGVars(), /* clean up variables */
-    typeStatement(gvLet(v, T, +(X, Y)), unit),
+    typeStatement(gvLet(v, +(X, Y)), T),
     assertion(X == int), assertion( Y == int), % make sure the types are int
     gvar(v, int). % make sure the global variable is defined
 
-% with infer 
+% global variable with infer 
 test(infer_gvar, [nondet]) :-
-    infer([gvLet(v, T, +(X, Y))], unit),
+    infer([gvLet(v, +(X, Y))], T),
     assertion(T==int), assertion(X==int), assertion(Y=int),
     gvar(v,int).
 
@@ -85,11 +85,92 @@ test(simple_if, [nondet]) :-
     typeStatement( if(true, [3], [4]), T),
     assertion(T==int).
 
-% with infer and global variable
+% if statement with infer and global variable
 test(infer_complexIf, [nondet]) :-
-    infer([gvLet(v, T, +(X, Y)), if(v < 3, [3], [4])], Ret),
-    assertion(T==int), assertion(X==int), assertion(Y=int), assertion(Ret == int),
+    infer([gvLet(v, +(X, Y)), if(v < 3, [*(4.0, 5.0)], [/(7.0, 2.0)])], Ret),
+    assertion(X==int), assertion(Y==int), assertion(Ret == float),
     gvar(v,int).
+
+
+% GLOBAL FUNCTION STATEMENT
+test(simple_globalFunction, [nondet]) :-
+    deleteGVars(),
+    typeStatement(gFunction(add, [X, Y, int], +(X, Y)), Ret),
+    assertion(X==int), assertion(Y==int), assertion(Ret == int),
+    gvar(add, [int, int, int]).
+
+% global function with infer
+test(infer_globalFunction, [nondet]) :-
+    infer([gFunction(multiply, [string, X, Y, float], +(X, Y))], Ret),
+    assertion(X==float), assertion(Y==float), assertion(Ret==float),
+    gvar(multiply, [string, float, float, float]).
+
+
+% FUNCTION CALL
+test(simple_functioncall, [nondet]) :-
+    deleteGVars(),
+    typeStatement(gFunction(add, [string, bool, int], +(int, int)), int), % add global function
+    typeStatement(funcCall(add, [X, Y]), Ret), %test function call
+    assertion(X==string), assertion(Y==bool), assertion(Ret==int).
+
+% global function declaration and call with infer
+test(infer_gFuncDecAndCall, [nondet]) :-
+    infer([ gFunction(add, [string, bool, int], +(int, int)), funcCall(add, [X, Y]) ], Ret),
+    assertion(X==string), assertion(Y==bool), assertion(Ret==int),
+    gvar(add, [string, bool, int]).
+
+% function call in global let statement with infer
+test(infer_FuncCallInGlobalLet, [nondet]) :-
+    infer([ 
+        gFunction(add, [string, bool, int], +(int, int)), 
+        gvLet(q, funcCall(add, [X, Y])) 
+        ], Ret),
+    assertion(X==string), assertion(Y==bool), assertion(Ret==int).
+    gvar(q, int).
+
+
+% LET IN
+test(simple_letIn, [nondet]) :-
+    deleteGVars(),
+    typeStatement(letIn([gvLet(p, -(4, 3))], +(p, 2)), Ret),
+    assertion(Ret==int),
+    not(gvar(p, int)).
+
+% let in with infer
+test(infer_letIn, [nondet]) :-
+    infer([
+        letIn([gvLet(p, -(4, 3))], +(p, 2))
+        ], Ret),
+    assertion(Ret==int),
+    not(gvar(p, int)).
+
+
+% WHERE STATEMENT
+test(simple_where, [nondet]) :-
+    deleteGVars(),
+    typeStatement(
+        where(
+            [ gvLet(var1, wVar1), gvLet(var2, +(var1, wVar2)) ],
+            [ gvLet(wVar1, int), gvLet(wVar2, int) ]),
+            Ret
+        ),
+    assertion(Ret==int),
+    gvar(var1, int), gvar(var2, int),
+    not(gvar(wVar1, int)), not(gvar(wVar2, int)).
+
+% where statement with infer
+test(infer_where, [nondet]) :-
+    infer(
+        [ where(
+            [ gFunction(multByQ, [float, float], *(float, q)), gvLet(f, +(multByQ(r), 6.0)) ],
+            [ gvLet(q, +(float, float)), gvLet(r, 4.0) ])
+            
+        ], Ret),
+    assertion(Ret==float), 
+    gvar(multByQ, [float, float]), gvar(f, float),
+    not(gvar(q, float)), not(gvar(r, float)).
+
+
 
 % test custom function with mocked definition
 test(mockedFct, [nondet]) :-
