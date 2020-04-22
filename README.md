@@ -7,7 +7,7 @@ Date: 4-22-2020
 
 This project is a basic type inference algorithm for the Haskell language. Written in Prolog, 
 this algorithm provides a type inference mechanism for the basic structures of a functional
-programming language, based on the syntax of Haskell.
+programming language, based on the syntax of Haskell. Actually quite fun.
 
 
 
